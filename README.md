@@ -33,8 +33,6 @@ Baixe o registro de qualquer dia como um arquivo de texto (.txt).
 
 Baixe os gráficos gerados como imagens (.png).
 
-Design Skeumorphic: Interface com sombras, gradientes e texturas para criar uma sensação de profundidade e realismo.
-
 Responsividade: O layout se adapta a diferentes tamanhos de tela, de desktops a celulares.
 
 🛠️ Tecnologias Utilizadas
