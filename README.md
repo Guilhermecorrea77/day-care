@@ -1,64 +1,89 @@
-📔 Agenda Diária - Web App com Gráficos
-Uma aplicação web de agenda/diário pessoal, responsiva e com foco na experiência do usuário. Desenvolvida com HTML, CSS e JavaScript puro, esta agenda permite salvar registros diários no navegador, monitorar hábitos e humor através de gráficos interativos e exportar os dados.
+# 🍼 Diário do Bebê
 
-📸 Visualização
+**A agenda da creche, no celular.** A tia registra a rotina do bebê com poucos toques — mamadeira, refeição, sono, fralda, remédio, temperatura, atividades — e no fim do dia envia aos pais um relatório bonito pelo WhatsApp.
 
-<img width="1301" height="2594" alt="guilhermecorrea77 github io_day-care_" src="https://github.com/user-attachments/assets/c9d833d7-aadd-46ac-bf42-d9345f9f0bdf" />
+**Acesse:** https://guilhermecorrea77.github.io/day-care/
 
+---
 
-Visão Mensal com Resumos Diários:
+## ✨ Como funciona
 
-Visão Diária e Gráfico de Humor:
+### ✏️ Registrar (para a tia)
+- **Adesivos grandes por toque**, pensados para quem está com um bebê no colo:
+  🍼 Mamadeira · 🍽️ Refeição · 💧 Água · 😴 Dormiu/Acordou · 🧷 Fralda · 🛁 Banho · 💊 Remédio · 🌡️ Temperatura · 🎨 Atividade.
+- **A hora já vem preenchida**, e as opções são botões (ex.: *150 ml*, *comeu metade*, *cocô mole*), sem precisar digitar.
+- **Sono com cronômetro:** toque em *Dormiu*; quando acordar, toque em *Acordou* e a duração é calculada sozinha.
+- **Banho e humor em um toque**, com **Desfazer** se tocar sem querer.
+- **Temperatura** com botões − / + e aviso de febre a partir de 37,8 °C (axilar).
+- **Remédio** com dose e confirmação de que a autorização dos pais foi conferida.
+- **Recado para os pais** num “post-it”, com o nome de quem escreveu.
+- **Linha do dia:** toque em qualquer registro para corrigir ou apagar.
+- **Tudo é salvo na hora.**
 
-✨ Funcionalidades Principais
-Visão de Calendário Mensal: Navegue facilmente entre os meses e visualize os dias com resumos visuais.
+### 📖 Dia (relatório para os pais)
+- “O dia de Alice”, com foto, idade e um resumo: horas de sono, refeições, fraldas e humor.
+- **Febre e remédio aparecem em destaque no topo.**
+- Linha do tempo do dia e o recado da tia.
+- **📲 Enviar pelo WhatsApp**, copiar o texto ou imprimir/salvar em PDF.
 
-Registro Diário Segmentado: O formulário do dia é dividido em Manhã, Tarde e Noite, ideal para rotinas variáveis como a de um professor.
+### 🗓️ Mês
+- Calendário com marcas coloridas: sono, fraldas, remédio e febre. Tocar num dia abre o relatório daquele dia.
+- Média de sono e de fraldas por dia, dias com febre e gráficos por dia.
 
-Monitoramento de Humor: Selecione seu humor diário (Feliz, Normal, Triste) e acompanhe as tendências.
+### 👶 Crianças
+- Várias crianças, com foto, data de nascimento (a idade é calculada) e **alergias e cuidados**, que ficam sempre visíveis na tela de registro.
+- **Backup:** baixar uma cópia e restaurar em outro aparelho.
 
-Rastreador de Hábitos (Habit Tracker): Marque hábitos diários pré-definidos para monitorar sua consistência.
+### Também
+- Tema **claro, escuro ou do sistema**.
+- Feito para celular, tablet e computador.
+- **Os registros da versão anterior são convertidos automaticamente**, sem perder nada.
 
-Persistência de Dados: Todas as informações são salvas localmente no seu navegador usando a API LocalStorage.
+---
 
-Gráficos Interativos:
+## 🔧 O que foi corrigido em relação à versão anterior
 
-Gráfico de Hábitos: Um gráfico de barras que mostra a frequência de cada hábito nos últimos 30 dias.
+| Problema | Correção |
+|---|---|
+| Os dados só eram salvos ao trocar de aba; fechar a página antes perdia tudo | Salvamento automático a cada registro |
+| Depois das 21h a data pulava para o dia seguinte (cálculo em UTC) | Datas sempre no horário local |
+| Uma criança só | Várias crianças |
+| Texto digitado era inserido como HTML no relatório | Todo texto é tratado antes de exibir |
+| Dependia do Tailwind via CDN (não recomendado em produção) e do Chart.js | CSS próprio e gráficos em SVG, sem dependências |
+| README descrevia outro app | Atualizado |
 
-Gráfico de Humor: Um gráfico de pizza que exibe a distribuição do seu humor no mesmo período.
+---
 
-Exportação de Dados:
+## 🗺️ Próximos passos sugeridos
 
-Baixe o registro de qualquer dia como um arquivo de texto (.txt).
+1. **Relatório ao vivo para os pais:** um link por criança em que os pais acompanham o dia em tempo real, com os dados **criptografados de ponta a ponta** (dá para reaproveitar a sincronização assinada do projeto [Fila Digital](https://github.com/Guilhermecorrea77/fila-digital)).
+2. **Login da creche e várias tias** registrando no mesmo diário, num servidor próprio (ex.: Supabase).
+3. **Fotos do dia** no relatório (com autorização de imagem dos pais).
+4. **Lembretes:** horário do remédio, mamadeira a cada X horas e itens para trazer (fraldas, pomada, roupa extra).
+5. **Curvas de crescimento** (peso e altura) com as referências da OMS.
+6. **Visão da turma:** quem está dormindo, quem já comeu e quem tem remédio pendente, numa só tela.
+7. **Exportar o mês em PDF** para os pais ou para o pediatra.
 
-Baixe os gráficos gerados como imagens (.png).
+---
 
-Responsividade: O layout se adapta a diferentes tamanhos de tela, de desktops a celulares.
+## 💻 Desenvolvimento
 
-🛠️ Tecnologias Utilizadas
-HTML5: Estruturação semântica do conteúdo.
+HTML, CSS e JavaScript puro (módulos ES), sem etapa de build.
 
-CSS3: Estilização skeumorphic, layout com Flexbox e Grid, e responsividade.
+```bash
+git clone https://github.com/Guilhermecorrea77/day-care.git
+cd day-care
+python3 -m http.server 8080   # abra http://localhost:8080
+npm test                       # testes do modelo de dados (Node 18+)
+```
 
-JavaScript (ES6+): Lógica do calendário, manipulação do DOM, gerenciamento de dados e interação com o usuário.
-
-Chart.js: Biblioteca externa para a criação dos gráficos de hábitos e humor.
-
-LocalStorage API: Para salvar e recuperar os dados da agenda no navegador.
-
-🚀 Como Executar o Projeto
-Este projeto não requer instalação de dependências ou um servidor.
-
-Clone este repositório ou baixe os 3 arquivos (index.html, style.css, script.js).
-
-Certifique-se de que todos os arquivos estão na mesma pasta.
-
-Abra o arquivo index.html em seu navegador de preferência (Google Chrome, Firefox, etc.).
-
-Pronto! A aplicação estará funcionando.
-
-📁 Estrutura de Arquivos
+```
 /
-├── index.html     # Arquivo principal com a estrutura da página
-├── style.css      # Folha de estilos com todo o design skeumorphic
-└── script.js      # Lógica da aplicação, manipulação de dados e gráficos
+├── index.html
+├── css/estilo.css     # visual, temas e animações
+├── js/dados.js        # modelo de dados, resumos, texto do WhatsApp e migração (testado)
+├── js/app.js          # telas e interação
+└── tests/dados.test.js
+```
+
+> Os dados ficam só no navegador do aparelho (localStorage). Nada é enviado para a internet.
