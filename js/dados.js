@@ -80,7 +80,82 @@ export function idade(nasc, ref = hoje()) {
 export const novoId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
 export function bancoVazio() {
-    return { v: VERSAO, criancas: [], registros: {}, config: { tema: 'system', tia: '' } };
+    return { v: VERSAO, salas: [], criancas: [], registros: {}, config: { tema: 'system', tia: '' } };
+}
+
+// ---------------- salas / turmas e alunos ----------------
+export const CORES_SALA = ['lilas', 'turquesa', 'laranja', 'azul', 'rosa', 'amarelo'];
+
+/** Garante os campos novos em bancos salvos por versões anteriores. */
+export function normalizar(banco) {
+    const b = structuredClone(banco);
+    b.salas = Array.isArray(b.salas) ? b.salas : [];
+    b.criancas = (b.criancas || []).map((c) => ({ salaId: '', arquivado: false, ...c }));
+    b.config = { tema: 'system', tia: '', ...(b.config || {}) };
+    if (b.config.salaFiltro && b.config.salaFiltro !== 'todas' && b.config.salaFiltro !== 'sem' && !b.salas.some((x) => x.id === b.config.salaFiltro)) b.config.salaFiltro = 'todas';
+    return b;
+}
+
+export function criarSala(banco, { nome, professoras = '' }) {
+    const b = structuredClone(banco);
+    const id = novoId();
+    b.salas.push({ id, nome: nome.trim(), professoras: professoras.trim(), cor: CORES_SALA[b.salas.length % CORES_SALA.length] });
+    return { banco: b, id };
+}
+
+export function editarSala(banco, id, dados) {
+    const b = structuredClone(banco);
+    const s = b.salas.find((x) => x.id === id);
+    if (s) Object.assign(s, { nome: (dados.nome ?? s.nome).trim(), professoras: (dados.professoras ?? s.professoras).trim() });
+    return b;
+}
+
+/** Apaga a sala; os alunos dela ficam "sem sala" (nada é perdido). */
+export function excluirSala(banco, id) {
+    const b = structuredClone(banco);
+    b.salas = b.salas.filter((x) => x.id !== id);
+    for (const c of b.criancas) if (c.salaId === id) c.salaId = '';
+    if (b.config.salaFiltro === id) b.config.salaFiltro = 'todas';
+    return b;
+}
+
+/** Alunos ativos (não arquivados), opcionalmente de uma sala: 'todas', 'sem' (sem sala) ou o id. */
+export function alunos(banco, filtro = 'todas') {
+    return banco.criancas
+        .filter((c) => !c.arquivado)
+        .filter((c) => filtro === 'todas' || (filtro === 'sem' ? !c.salaId || !banco.salas.some((s) => s.id === c.salaId) : c.salaId === filtro))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+export const arquivados = (banco) => banco.criancas.filter((c) => c.arquivado).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+function trocarAtualSePreciso(b, id) {
+    if (b.config.atual !== id) return;
+    const lista = alunos(b, b.config.salaFiltro || 'todas');
+    b.config.atual = (lista[0] || alunos(b)[0])?.id;
+}
+
+/** Arquiva: some das listas, mas todos os registros continuam guardados. */
+export function arquivar(banco, id, agora = hoje()) {
+    const b = structuredClone(banco);
+    const c = b.criancas.find((x) => x.id === id);
+    if (c) { c.arquivado = true; c.arquivadoEm = agora; }
+    trocarAtualSePreciso(b, id);
+    return b;
+}
+export function desarquivar(banco, id) {
+    const b = structuredClone(banco);
+    const c = b.criancas.find((x) => x.id === id);
+    if (c) { c.arquivado = false; delete c.arquivadoEm; }
+    if (!b.config.atual || !alunos(b).some((x) => x.id === b.config.atual)) b.config.atual = id;
+    return b;
+}
+/** Exclui de vez o aluno e todos os registros dele. */
+export function excluirCrianca(banco, id) {
+    const b = structuredClone(banco);
+    b.criancas = b.criancas.filter((x) => x.id !== id);
+    delete b.registros[id];
+    trocarAtualSePreciso(b, id);
+    return b;
 }
 
 export function diaVazio() { return { eventos: [], recado: '', tia: '' }; }
