@@ -30,8 +30,13 @@
 - Calendário com marcas coloridas: sono, fraldas, remédio e febre. Tocar num dia abre o relatório daquele dia.
 - Média de sono e de fraldas por dia, dias com febre e gráficos por dia.
 
-### 👶 Crianças
-- Várias crianças, com foto, data de nascimento (a idade é calculada) e **alergias e cuidados**, que ficam sempre visíveis na tela de registro.
+### 👶 Alunos e salas
+- **Salas/turmas** (ex.: Berçário 1, Maternal) com as **professoras responsáveis**. Os alunos aparecem agrupados por sala e dá para filtrar por sala, inclusive na hora de trocar de aluno.
+- O nome das professoras da sala já vem preenchido no recado aos pais.
+- Cada aluno tem foto, data de nascimento (a idade é calculada), sala e **alergias e cuidados**, que ficam sempre visíveis na tela de registro.
+- **Arquivar:** para quem saiu da creche. O aluno some das listas, mas **todos os registros ficam guardados** e dá para restaurar quando quiser.
+- **Excluir de vez:** apaga o aluno e todos os registros, com confirmação.
+- Excluir uma sala não apaga ninguém: os alunos ficam como “sem sala”.
 - **Backup:** baixar uma cópia e restaurar em outro aparelho.
 
 ### Também

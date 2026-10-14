@@ -133,3 +133,45 @@ test('migração dos dados da versão antiga', () => {
     assert.equal(r.sonoMin, 90);
     assert.equal(reg['2025-10-10'].tia, 'Tia Bia');
 });
+
+test('salas: criar, filtrar alunos e excluir sala sem perder alunos', () => {
+    let b = D.normalizar(D.bancoVazio());
+    let r = D.criarSala(b, { nome: 'Berçário 1', professoras: 'Tia Ana' }); b = r.banco; const s1 = r.id;
+    r = D.criarSala(b, { nome: 'Maternal', professoras: 'Tia Bia' }); b = r.banco; const s2 = r.id;
+    b.criancas.push({ id: 'a', nome: 'Alice', salaId: s1 }, { id: 'b', nome: 'Bento', salaId: s2 }, { id: 'c', nome: 'Caio', salaId: '' });
+    b = D.normalizar(b);
+    assert.deepEqual(D.alunos(b, s1).map((c) => c.id), ['a']);
+    assert.deepEqual(D.alunos(b, 'sem').map((c) => c.id), ['c']);
+    assert.deepEqual(D.alunos(b).map((c) => c.nome), ['Alice', 'Bento', 'Caio']);
+    b = D.editarSala(b, s1, { nome: 'Berçário A' });
+    assert.equal(b.salas[0].nome, 'Berçário A');
+    b.config.salaFiltro = s2;
+    b = D.excluirSala(b, s2);
+    assert.equal(b.criancas.find((c) => c.id === 'b').salaId, '');
+    assert.equal(b.config.salaFiltro, 'todas');
+    assert.deepEqual(D.alunos(b, 'sem').map((c) => c.id), ['b', 'c']);
+});
+
+test('arquivar guarda os registros; restaurar devolve; excluir apaga tudo', () => {
+    let b = D.normalizar(D.bancoVazio());
+    b.criancas.push({ id: 'a', nome: 'Alice' }, { id: 'b', nome: 'Bento' });
+    b.registros.a = { '2026-10-13': { eventos: [{ id: 'x', tipo: 'banho', hora: '10:00' }], recado: '' } };
+    b.config.atual = 'a';
+    b = D.arquivar(D.normalizar(b), 'a', '2026-10-13');
+    assert.deepEqual(D.alunos(b).map((c) => c.id), ['b']);
+    assert.deepEqual(D.arquivados(b).map((c) => c.id), ['a']);
+    assert.equal(b.config.atual, 'b');
+    assert.ok(b.registros.a['2026-10-13']);
+    b = D.desarquivar(b, 'a');
+    assert.deepEqual(D.alunos(b).map((c) => c.id), ['a', 'b']);
+    b = D.excluirCrianca(b, 'a');
+    assert.equal(b.registros.a, undefined);
+    assert.deepEqual(b.criancas.map((c) => c.id), ['b']);
+});
+
+test('normalizar banco antigo (sem salas)', () => {
+    const b = D.normalizar({ v: 2, criancas: [{ id: 'a', nome: 'Alice' }], registros: {}, config: { tema: 'dark' } });
+    assert.deepEqual(b.salas, []);
+    assert.equal(b.criancas[0].arquivado, false);
+    assert.equal(b.config.tema, 'dark');
+});

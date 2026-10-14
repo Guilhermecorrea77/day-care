@@ -385,3 +385,42 @@ dialog.folha::backdrop { background: rgba(20, 22, 50, .45); animation: escurecer
     .cartao, .capa { box-shadow: none; break-inside: avoid; }
     .linha-tempo.contar .item-tempo { animation: none; }
 }
+
+/* ===================== salas e arquivados ===================== */
+.filtro-salas { margin-bottom: 20px; }
+.filtro-salas .chip { display: inline-flex; align-items: center; gap: 6px; }
+.filtro-salas .chip .suave { font-weight: 400; }
+.ponto-sala { width: 10px; height: 10px; border-radius: 50%; background: var(--cor, var(--suave)); flex-shrink: 0; }
+.ponto-sala.grande { width: 14px; height: 14px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor, var(--suave)) 22%, transparent); }
+.grupo-sala + .grupo-sala { margin-top: 28px; }
+.grupo-topo { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; margin-bottom: 14px; border-bottom: 2px solid color-mix(in srgb, var(--cor, var(--linha)) 40%, var(--linha)); }
+.grupo-topo h2 { font-size: 1.3rem; }
+.grupo-sala .vazio { padding: 16px 12px; }
+.grupo-sala .vazio .btn { margin-left: 6px; }
+.dica-salas { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+.dica-salas .emoji { font-size: 2rem; }
+.dica-salas .btn { margin-left: auto; flex-shrink: 0; }
+.arquivados { margin-top: 28px; }
+.arquivados summary { cursor: pointer; list-style-position: inside; }
+.lista-arquivados { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+.lista-arquivados li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border-radius: var(--r-pequeno); background: var(--afundado); }
+.lista-arquivados li .avatar { filter: grayscale(.6); opacity: .85; }
+.lista-arquivados li > div { display: flex; flex-direction: column; }
+.zona-saida { margin-top: 8px; padding: 14px; border-radius: var(--r-pequeno); border: 1px dashed var(--linha); background: var(--afundado); display: grid; gap: 10px; }
+.lista-troca { display: grid; gap: 8px; margin-top: 4px; }
+.lista-troca .item-troca { justify-content: flex-start; border-radius: 16px; padding: 10px 14px; }
+.lista-troca .item-troca.atual { border-color: var(--primaria); }
+.folha .filtro-salas { margin-bottom: 14px; }
+.cartao-topo .linha-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.linha-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 420px) {
+    .dica-salas { flex-wrap: wrap; }
+    .dica-salas .btn { margin-left: 0; }
+    .grupo-topo { flex-wrap: wrap; }
+}
+.lista-criancas .cartao + .cartao { margin-top: 0; }
+@media (max-width: 600px) {
+    .cartao-topo:has(> .linha-btns) { flex-direction: column; align-items: stretch; gap: 12px; }
+    .cartao-topo > .linha-btns { justify-content: stretch; }
+    .cartao-topo > .linha-btns .btn { flex: 1; }
+}

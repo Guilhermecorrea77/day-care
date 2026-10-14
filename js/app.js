@@ -14,7 +14,7 @@ const ABAS = [
     { id: 'registrar', ic: '✏️', nome: 'Registrar' },
     { id: 'dia', ic: '📖', nome: 'Dia' },
     { id: 'mes', ic: '🗓️', nome: 'Mês' },
-    { id: 'criancas', ic: '👶', nome: 'Crianças' },
+    { id: 'criancas', ic: '👶', nome: 'Alunos' },
 ];
 const CORES_AVATAR = ['c-lilas', 'c-turquesa', 'c-laranja', 'c-azul', 'c-rosa', 'c-amarelo'];
 const ADESIVOS = ['mamadeira', 'refeicao', 'agua', 'sono', 'fralda', 'banho', 'remedio', 'temperatura', 'atividade'];
@@ -23,7 +23,7 @@ const ADESIVOS = ['mamadeira', 'refeicao', 'agua', 'sono', 'fralda', 'banho', 'r
 function carregar() {
     try {
         const b = JSON.parse(localStorage.getItem(CHAVE) || 'null');
-        if (b && b.v === D.VERSAO) return b;
+        if (b && b.v === D.VERSAO) return D.normalizar(b);
     } catch (e) { /* segue */ }
     const b = D.bancoVazio();
     // Traz os registros da versão antiga, se houver.
@@ -38,7 +38,7 @@ function carregar() {
             b.config.migrado = true;
         }
     } catch (e) { /* sem dados antigos */ }
-    return b;
+    return D.normalizar(b);
 }
 let banco = carregar();
 const estado = { aba: 'registrar', data: D.hoje(), mes: null, novoEvento: null };
@@ -53,12 +53,15 @@ function salvar() {
         salvoTimer = setTimeout(() => el.classList.remove('mostrar'), 1600);
         return true;
     } catch (e) {
-        aviso('⚠️ Não foi possível salvar: o armazenamento do navegador está cheio. Tente uma foto menor ou baixe uma cópia em Crianças.');
+        aviso('⚠️ Não foi possível salvar: o armazenamento do navegador está cheio. Tente uma foto menor ou baixe uma cópia em Alunos.');
         return false;
     }
 }
 
-const atual = () => banco.criancas.find((c) => c.id === banco.config.atual) || banco.criancas[0] || null;
+/** Aluno selecionado (nunca um arquivado). */
+const atual = () => { const ativos = D.alunos(banco); return ativos.find((c) => c.id === banco.config.atual) || ativos[0] || null; };
+const salaDe = (c) => banco.salas.find((s) => s.id === c?.salaId) || null;
+const filtroSala = () => banco.config.salaFiltro || 'todas';
 const ehHoje = () => estado.data === D.hoje();
 const agoraSeHoje = () => (ehHoje() ? D.horaAgora() : null);
 const diaAtual = () => D.obterDia(banco, atual().id, estado.data);
@@ -137,7 +140,7 @@ function renderTopo() {
     const c = atual();
     const btn = $('#btn-crianca');
     btn.hidden = !c;
-    if (c) btn.innerHTML = `${avatar(c)}<span style="min-width:0"><span class="nome">${esc(c.nome)}</span><span class="idade">${esc(D.idade(c.nasc) || 'Toque para trocar')}</span></span>${banco.criancas.length > 1 ? '<span class="seta" aria-hidden="true">▾</span>' : ''}`;
+    if (c) btn.innerHTML = `${avatar(c)}<span style="min-width:0"><span class="nome">${esc(c.nome)}</span><span class="idade">${esc([salaDe(c)?.nome, D.idade(c.nasc)].filter(Boolean).join(' · ') || 'Toque para trocar')}</span></span>${D.alunos(banco).length > 1 ? '<span class="seta" aria-hidden="true">▾</span>' : ''}`;
     const abas = c ? ABAS.map((a) => `<button type="button" data-aba="${a.id}" ${estado.aba === a.id ? 'aria-current="page"' : ''}><span class="ic" aria-hidden="true">${a.ic}</span>${a.nome}</button>`).join('') : '';
     $('#abas-topo').innerHTML = abas;
     $('#abas-inferior').innerHTML = abas;
@@ -150,7 +153,8 @@ function renderTopo() {
 function render({ rolar = false } = {}) {
     renderTopo();
     const c = atual();
-    if (!c) { app.innerHTML = boasVindas(); ligarBoasVindas(); return; }
+    if (!c && !banco.criancas.length) { app.innerHTML = boasVindas(); ligarBoasVindas(); return; }
+    if (!c) estado.aba = 'criancas'; // todos arquivados: só a tela de alunos faz sentido
     const vistas = { registrar: vistaRegistrar, dia: vistaDia, mes: vistaMes, criancas: vistaCriancas };
     app.innerHTML = `<div class="vista">${vistas[estado.aba]()}</div>`;
     ({ registrar: ligarRegistrar, dia: ligarDia, mes: ligarMes, criancas: ligarCriancas })[estado.aba]();
@@ -218,7 +222,7 @@ function vistaRegistrar() {
                     <label for="inp-recado" class="sr-only">Recado</label>
                     <textarea id="inp-recado" placeholder="Ex.: Hoje brincou muito no parquinho! Mandar mais fraldas amanhã.">${esc(dia.recado)}</textarea>
                     <label for="inp-tia">Quem escreveu</label>
-                    <input id="inp-tia" value="${esc(dia.tia || banco.config.tia || '')}" placeholder="Ex.: Tia Ana" maxlength="40">
+                    <input id="inp-tia" value="${esc(dia.tia || salaDe(c)?.professoras || banco.config.tia || '')}" placeholder="Ex.: Tia Ana" maxlength="60">
                 </section>
             </div>
             <section class="cartao" aria-labelledby="t-linha">
@@ -445,7 +449,8 @@ function vistaDia() {
     const dia = diaAtual();
     const r = D.resumoDia(dia, { agora: agoraSeHoje() });
     const capa = `<section class="capa">${avatar(c, true)}<div><h1>O dia de ${esc(c.nome.split(' ')[0])}</h1>
-        <p>${D.fmtDataLonga(estado.data)}${c.nasc ? ` · ${esc(D.idade(c.nasc, estado.data))}` : ''}</p></div></section>`;
+        <p>${D.fmtDataLonga(estado.data)}${c.nasc ? ` · ${esc(D.idade(c.nasc, estado.data))}` : ''}</p>
+        ${salaDe(c) ? `<p class="peq">🏫 ${esc(salaDe(c).nome)}${salaDe(c).professoras ? ` · ${esc(salaDe(c).professoras)}` : ''}</p>` : ''}</div></section>`;
     if (r.vazio) {
         return `${dataNav()}${capa}<div class="cartao vazio"><span class="emoji" aria-hidden="true">📭</span>Nada registrado neste dia.
             <div style="margin-top:14px"><button type="button" class="btn btn-pri" data-aba="registrar">✏️ Registrar agora</button></div></div>`;
@@ -598,21 +603,61 @@ function ligarMes() {
 }
 
 // ===================== CRIANÇAS =====================
+function cartaoAluno(k, c) {
+    return `<article class="cartao cartao-crianca ${c && k.id === c.id ? 'atual' : ''}">
+        ${avatar(k, true)}
+        <div style="min-width:0"><h3>${esc(k.nome)}</h3><p class="suave peq">${esc(D.idade(k.nasc) || 'idade não informada')}</p>${k.obs ? `<p class="peq" style="margin-top:4px">⚠️ ${esc(k.obs)}</p>` : ''}</div>
+        <div class="acoes">
+            ${c && k.id === c.id ? '<span class="peq suave" style="text-align:center">selecionado</span>' : `<button type="button" class="btn btn-peq" data-escolher="${k.id}">Selecionar</button>`}
+            <button type="button" class="btn btn-peq" data-editar-crianca="${k.id}">Editar</button>
+        </div>
+    </article>`;
+}
+
+function chipsSalas(selecionada, { contagem = true } = {}) {
+    const n = (f) => (contagem ? ` <span class="suave">${D.alunos(banco, f).length}</span>` : '');
+    const temSemSala = D.alunos(banco, 'sem').length > 0;
+    return `<div class="chips filtro-salas" role="group" aria-label="Filtrar por sala">
+        <button type="button" class="chip" data-filtro="todas" aria-pressed="${selecionada === 'todas'}">Todas${n('todas')}</button>
+        ${banco.salas.map((x) => `<button type="button" class="chip c-${x.cor}" data-filtro="${x.id}" aria-pressed="${selecionada === x.id}"><span class="ponto-sala" aria-hidden="true"></span>${esc(x.nome)}${n(x.id)}</button>`).join('')}
+        ${temSemSala && banco.salas.length ? `<button type="button" class="chip" data-filtro="sem" aria-pressed="${selecionada === 'sem'}">Sem sala${n('sem')}</button>` : ''}
+    </div>`;
+}
+
 function vistaCriancas() {
     const c = atual();
+    const filtro = filtroSala();
+    const grupos = [];
+    const salasVis = filtro === 'todas' ? banco.salas : banco.salas.filter((x) => x.id === filtro);
+    for (const sl of salasVis) grupos.push({ sala: sl, lista: D.alunos(banco, sl.id) });
+    if (filtro === 'todas' || filtro === 'sem') {
+        const sem = D.alunos(banco, 'sem');
+        if (sem.length || !banco.salas.length) grupos.push({ sala: null, lista: sem });
+    }
+    const arq = D.arquivados(banco);
+    const grupoHTML = ({ sala, lista }) => `
+        <section class="grupo-sala ${sala ? `c-${sala.cor}` : ''}" aria-label="${esc(sala ? sala.nome : 'Sem sala')}">
+            ${banco.salas.length ? `<div class="grupo-topo">
+                <span class="ponto-sala grande" aria-hidden="true"></span>
+                <div style="min-width:0"><h2>${esc(sala ? sala.nome : 'Sem sala')}</h2>
+                    <p class="suave peq">${sala ? (sala.professoras ? `👩‍🏫 ${esc(sala.professoras)} · ` : '') : ''}${lista.length} ${lista.length === 1 ? 'aluno' : 'alunos'}</p></div>
+                ${sala ? `<button type="button" class="btn btn-peq" data-editar-sala="${sala.id}" style="margin-left:auto">✏️ Editar sala</button>` : ''}
+            </div>` : ''}
+            ${lista.length ? `<div class="lista-criancas">${lista.map((k) => cartaoAluno(k, c)).join('')}</div>`
+                : `<p class="vazio peq">Nenhum aluno ${sala ? 'nesta sala' : 'sem sala'}. ${sala ? `<button type="button" class="btn btn-peq" data-novo-na-sala="${sala.id}">＋ Adicionar aluno aqui</button>` : ''}</p>`}
+        </section>`;
     return `
-        <div class="cartao-topo"><h1>Crianças</h1><button type="button" class="btn btn-pri" id="btn-nova">＋ Adicionar</button></div>
+        <div class="cartao-topo"><h1>Alunos</h1>
+            <div class="linha-btns"><button type="button" class="btn" id="btn-nova-sala">🏫 Nova sala</button><button type="button" class="btn btn-pri" id="btn-nova">＋ Aluno</button></div></div>
         ${banco.config.migrado ? '<div class="alergia" style="background:var(--afundado);border-color:var(--linha)"><span aria-hidden="true">ℹ️</span><span>Os registros da versão anterior foram trazidos para <b>Meu bebê</b>. Toque em Editar para colocar o nome certo.</span></div>' : ''}
-        <div class="lista-criancas">
-            ${banco.criancas.map((k) => `<article class="cartao cartao-crianca ${k.id === c.id ? 'atual' : ''}">
-                ${avatar(k, true)}
-                <div style="min-width:0"><h3>${esc(k.nome)}</h3><p class="suave peq">${esc(D.idade(k.nasc) || 'idade não informada')}</p>${k.obs ? `<p class="peq" style="margin-top:4px">⚠️ ${esc(k.obs)}</p>` : ''}</div>
-                <div class="acoes">
-                    ${k.id === c.id ? '<span class="peq suave" style="text-align:center">selecionada</span>' : `<button type="button" class="btn btn-peq" data-escolher="${k.id}">Selecionar</button>`}
-                    <button type="button" class="btn btn-peq" data-editar-crianca="${k.id}">Editar</button>
-                </div>
-            </article>`).join('')}
-        </div>
+        ${!c && banco.criancas.length ? '<div class="alergia" style="background:var(--afundado);border-color:var(--linha)"><span aria-hidden="true">ℹ️</span><span>Todos os alunos estão arquivados. Restaure um aluno ou adicione um novo para voltar a registrar.</span></div>' : ''}
+        ${banco.salas.length ? chipsSalas(filtro) : `<div class="cartao dica-salas"><span class="emoji" aria-hidden="true">🏫</span><div><b>Organize por salas</b><p class="suave peq">Crie salas como “Berçário 1” ou “Maternal”, com as professoras de cada uma. Assim fica fácil achar os alunos de cada turma.</p></div><button type="button" class="btn btn-peq" id="btn-nova-sala-2">Criar sala</button></div>`}
+        ${grupos.map(grupoHTML).join('')}
+        ${arq.length ? `<details class="cartao arquivados" ${estado.abrirArquivados ? 'open' : ''}>
+            <summary><b>🗄️ Arquivados (${arq.length})</b> <span class="suave peq">— alunos que saíram; os registros continuam guardados</span></summary>
+            <ul class="lista-arquivados">${arq.map((k) => `<li>${avatar(k)}<div style="min-width:0"><b>${esc(k.nome)}</b><span class="suave peq">${esc([salaDe(k)?.nome, k.arquivadoEm ? `arquivado em ${D.fmtDataCurta(k.arquivadoEm)}/${k.arquivadoEm.slice(0, 4)}` : ''].filter(Boolean).join(' · '))}</span></div>
+                <span class="linha-btns" style="margin-left:auto"><button type="button" class="btn btn-peq" data-restaurar="${k.id}">↩️ Restaurar</button><button type="button" class="btn btn-peq btn-perigo" data-excluir="${k.id}">Excluir</button></span></li>`).join('')}</ul>
+        </details>` : ''}
         <section class="cartao" style="margin-top:24px" aria-labelledby="t-bkp">
             <h2 id="t-bkp">💾 Seus dados</h2>
             <p class="suave" style="margin:6px 0 14px">Tudo fica guardado só neste aparelho. Baixe uma cópia de vez em quando — ela também serve para passar os registros para outro celular ou computador.</p>
@@ -640,19 +685,44 @@ function redimensionarFoto(arquivo) {
     });
 }
 
-function abrirCrianca(k = null) {
+function confirmarExclusao(k) {
+    const n = Object.keys(banco.registros[k.id] || {}).length;
+    return confirm(`Excluir ${k.nome} de vez, com ${n} ${n === 1 ? 'dia registrado' : 'dias registrados'}?\n\nIsso não pode ser desfeito. Se a criança só saiu da creche, prefira "Arquivar": os registros ficam guardados.`);
+}
+function arquivarAluno(k) {
+    banco = D.arquivar(banco, k.id);
+    salvar(); render();
+    aviso(`${k.nome} foi para os arquivados`, { nome: 'Desfazer', fn: () => { banco = D.desarquivar(banco, k.id); salvar(); render(); } });
+}
+function excluirAluno(k) {
+    if (!confirmarExclusao(k)) return false;
+    banco = D.excluirCrianca(banco, k.id);
+    salvar(); render();
+    aviso(`${k.nome} foi excluído`);
+    return true;
+}
+
+function abrirCrianca(k = null, salaInicial = null) {
     let foto = k?.foto || '';
+    const salaSel = k ? k.salaId : (salaInicial ?? (banco.salas.some((x) => x.id === filtroSala()) ? filtroSala() : ''));
     $('#folha-corpo').innerHTML = `
-        <div class="folha-titulo c-lilas"><span class="emoji" aria-hidden="true">👶</span><h2 id="folha-titulo">${k ? `Editar ${esc(k.nome)}` : 'Nova criança'}</h2></div>
+        <div class="folha-titulo c-lilas"><span class="emoji" aria-hidden="true">👶</span><h2 id="folha-titulo">${k ? `Editar ${esc(k.nome)}` : 'Novo aluno'}</h2></div>
         <div class="campo foto-escolher"><span id="f-foto-prev">${avatar(k || { nome: '?' }, true)}</span>
             <label class="btn btn-peq" style="cursor:pointer">📷 ${k?.foto ? 'Trocar foto' : 'Escolher foto'}<input type="file" id="f-foto" accept="image/*" hidden></label>
             ${k?.foto ? '<button type="button" class="btn btn-peq btn-perigo" id="f-sem-foto">Remover</button>' : ''}</div>
         ${campoTexto('f-nome-c', 'Nome', k?.nome, 'Ex.: Alice', 'required maxlength="40"')}
-        <div class="campo"><label for="f-nasc">Data de nascimento</label><input class="entrada" type="date" id="f-nasc" value="${esc(k?.nasc || '')}" max="${D.hoje()}"></div>
+        <div class="campos-2">
+            <div class="campo"><label for="f-nasc">Data de nascimento</label><input class="entrada" type="date" id="f-nasc" value="${esc(k?.nasc || '')}" max="${D.hoje()}"></div>
+            <div class="campo"><label for="f-sala">Sala</label><select class="entrada" id="f-sala">
+                <option value="">Sem sala</option>${banco.salas.map((x) => `<option value="${x.id}" ${x.id === salaSel ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></div>
+        </div>
         <div class="campo"><label for="f-obs-c">Alergias e cuidados importantes</label><textarea class="entrada" id="f-obs-c" rows="2" maxlength="200" placeholder="Ex.: alergia a leite de vaca; usa pomada X">${esc(k?.obs || '')}</textarea>
-            <p class="suave peq" style="margin-top:4px">Aparece em destaque no topo da tela de registro.</p></div>`;
-    $('#folha-acoes').innerHTML = `${k && banco.criancas.length > 1 ? '<button type="button" class="btn btn-perigo" id="f-apagar-c">Excluir</button>' : '<button type="button" class="btn" id="f-cancelar">Cancelar</button>'}
-        <button type="submit" class="btn btn-pri">${k ? 'Salvar' : 'Adicionar'}</button>`;
+            <p class="suave peq" style="margin-top:4px">Aparece em destaque no topo da tela de registro.</p></div>
+        ${k ? `<div class="zona-saida">
+            <p class="peq"><b>A criança saiu da creche?</b> Arquive: ela some das listas, mas os registros ficam guardados e dá para restaurar quando quiser.</p>
+            <div class="linha-btns"><button type="button" class="btn btn-peq" id="f-arquivar">🗄️ Arquivar</button><button type="button" class="btn btn-peq btn-perigo" id="f-apagar-c">Excluir de vez</button></div>
+        </div>` : ''}`;
+    $('#folha-acoes').innerHTML = `<button type="button" class="btn" id="f-cancelar">Cancelar</button><button type="submit" class="btn btn-pri">${k ? 'Salvar' : 'Adicionar'}</button>`;
     $('#f-foto').addEventListener('change', async (e) => {
         const arq = e.target.files[0];
         if (!arq) return;
@@ -660,20 +730,15 @@ function abrirCrianca(k = null) {
         catch (err) { aviso(err.message); }
     });
     $('#f-sem-foto')?.addEventListener('click', () => { foto = ''; $('#f-foto-prev').innerHTML = avatar({ ...k, foto: '' }, true); });
-    $('#f-cancelar')?.addEventListener('click', () => folha.close());
-    $('#f-apagar-c')?.addEventListener('click', () => {
-        if (!confirm(`Excluir ${k.nome} e todos os registros? Isso não pode ser desfeito (a não ser que você tenha uma cópia).`)) return;
-        banco.criancas = banco.criancas.filter((x) => x.id !== k.id);
-        delete banco.registros[k.id];
-        if (banco.config.atual === k.id) banco.config.atual = banco.criancas[0]?.id;
-        salvar(); folha.close(); render();
-    });
+    $('#f-cancelar').addEventListener('click', () => folha.close());
+    $('#f-arquivar')?.addEventListener('click', () => { folha.close(); arquivarAluno(k); });
+    $('#f-apagar-c')?.addEventListener('click', () => { if (excluirAluno(k)) folha.close(); });
     $('#folha-form').onsubmit = (ev) => {
         ev.preventDefault();
         if (!$('#folha-form').reportValidity()) return;
-        const dados = { nome: $('#f-nome-c').value.trim(), nasc: $('#f-nasc').value, obs: $('#f-obs-c').value.trim(), foto };
+        const dados = { nome: $('#f-nome-c').value.trim(), nasc: $('#f-nasc').value, obs: $('#f-obs-c').value.trim(), foto, salaId: $('#f-sala').value };
         if (k) Object.assign(banco.criancas.find((x) => x.id === k.id), dados);
-        else { const id = D.novoId(); banco.criancas.push({ id, ...dados }); banco.config.atual = id; }
+        else { const id = D.novoId(); banco.criancas.push({ id, arquivado: false, ...dados }); banco.config.atual = id; }
         delete banco.config.migrado;
         salvar(); folha.close(); render();
         aviso(k ? 'Dados atualizados' : `${dados.nome} entrou no diário`);
@@ -681,10 +746,51 @@ function abrirCrianca(k = null) {
     folha.showModal();
 }
 
+function abrirSala(sl = null) {
+    const n = sl ? D.alunos(banco, sl.id).length : 0;
+    $('#folha-corpo').innerHTML = `
+        <div class="folha-titulo c-${sl ? sl.cor : 'turquesa'}"><span class="emoji" aria-hidden="true">🏫</span><h2 id="folha-titulo">${sl ? `Editar ${esc(sl.nome)}` : 'Nova sala'}</h2></div>
+        ${campoTexto('f-sala-nome', 'Nome da sala', sl?.nome, 'Ex.: Berçário 1', 'required maxlength="40"')}
+        ${campoTexto('f-sala-prof', 'Professora(s) responsável(is)', sl?.professoras, 'Ex.: Tia Ana e Tia Bia', 'maxlength="60"')}
+        <p class="suave peq">O nome das professoras já aparece preenchido no recado aos pais dos alunos desta sala.</p>
+        ${sl ? `<div class="zona-saida"><p class="peq">Excluir a sala não apaga ninguém: ${n ? `os ${n} ${n === 1 ? 'aluno fica' : 'alunos ficam'}` : 'os alunos ficam'} como “sem sala”.</p>
+            <button type="button" class="btn btn-peq btn-perigo" id="f-excluir-sala">Excluir sala</button></div>` : ''}`;
+    $('#folha-acoes').innerHTML = `<button type="button" class="btn" id="f-cancelar">Cancelar</button><button type="submit" class="btn btn-pri">${sl ? 'Salvar' : 'Criar sala'}</button>`;
+    $('#f-cancelar').addEventListener('click', () => folha.close());
+    $('#f-excluir-sala')?.addEventListener('click', () => {
+        if (!confirm(`Excluir a sala ${sl.nome}? Os alunos dela continuam no diário, como “sem sala”.`)) return;
+        banco = D.excluirSala(banco, sl.id);
+        salvar(); folha.close(); render();
+        aviso(`Sala ${sl.nome} excluída`);
+    });
+    $('#folha-form').onsubmit = (ev) => {
+        ev.preventDefault();
+        if (!$('#folha-form').reportValidity()) return;
+        const dados = { nome: $('#f-sala-nome').value, professoras: $('#f-sala-prof').value };
+        if (sl) banco = D.editarSala(banco, sl.id, dados);
+        else { const r = D.criarSala(banco, dados); banco = r.banco; banco.config.salaFiltro = r.id; }
+        salvar(); folha.close(); render();
+        aviso(sl ? 'Sala atualizada' : `Sala ${dados.nome.trim()} criada — agora adicione os alunos`);
+    };
+    folha.showModal();
+}
+
 function ligarCriancas() {
     $('#btn-nova').addEventListener('click', () => abrirCrianca());
-    $$('[data-escolher]').forEach((b) => b.addEventListener('click', () => { banco.config.atual = b.dataset.escolher; salvar(); render(); }));
+    $('#btn-nova-sala').addEventListener('click', () => abrirSala());
+    $('#btn-nova-sala-2')?.addEventListener('click', () => abrirSala());
+    $$('[data-filtro]', app).forEach((b) => b.addEventListener('click', () => { banco.config.salaFiltro = b.dataset.filtro; salvar(); render(); }));
+    $$('[data-editar-sala]').forEach((b) => b.addEventListener('click', () => abrirSala(banco.salas.find((x) => x.id === b.dataset.editarSala))));
+    $$('[data-novo-na-sala]').forEach((b) => b.addEventListener('click', () => abrirCrianca(null, b.dataset.novoNaSala)));
+    $$('[data-escolher]').forEach((b) => b.addEventListener('click', () => { banco.config.atual = b.dataset.escolher; salvar(); render(); aviso(`${atual().nome} selecionado`); }));
     $$('[data-editar-crianca]').forEach((b) => b.addEventListener('click', () => abrirCrianca(banco.criancas.find((x) => x.id === b.dataset.editarCrianca))));
+    $$('[data-restaurar]').forEach((b) => b.addEventListener('click', () => {
+        const k = banco.criancas.find((x) => x.id === b.dataset.restaurar);
+        banco = D.desarquivar(banco, k.id); estado.abrirArquivados = true;
+        salvar(); render(); aviso(`${k.nome} voltou para a lista de alunos`);
+    }));
+    $$('[data-excluir]').forEach((b) => b.addEventListener('click', () => { estado.abrirArquivados = true; excluirAluno(banco.criancas.find((x) => x.id === b.dataset.excluir)); }));
+    $('.arquivados')?.addEventListener('toggle', (e) => { estado.abrirArquivados = e.target.open; });
     $('#btn-exportar').addEventListener('click', () => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([JSON.stringify(banco)], { type: 'application/json' }));
@@ -698,22 +804,31 @@ function ligarCriancas() {
             const b = JSON.parse(await arq.text());
             if (b?.v !== D.VERSAO || !Array.isArray(b.criancas)) throw new Error();
             if (!confirm(`Restaurar a cópia com ${b.criancas.length} ${b.criancas.length === 1 ? 'criança' : 'crianças'}? Os dados atuais deste aparelho serão substituídos.`)) return;
-            banco = b; salvar(); render(); aviso('Cópia restaurada');
+            banco = D.normalizar(b); salvar(); render(); aviso('Cópia restaurada');
         } catch (err) { aviso('Esse arquivo não é uma cópia do Diário do Bebê.'); }
     });
 }
 
 // ===================== trocar de criança (topo) =====================
-$('#btn-crianca').addEventListener('click', () => {
-    if (banco.criancas.length < 2) return irPara('criancas');
-    $('#folha-corpo').innerHTML = `<div class="folha-titulo c-lilas"><span class="emoji" aria-hidden="true">👶</span><h2 id="folha-titulo">Trocar de criança</h2></div>
-        <div style="display:grid;gap:8px">${banco.criancas.map((k) => `<button type="button" class="btn" style="justify-content:flex-start;border-radius:16px;padding:10px 14px" data-trocar="${k.id}">${avatar(k)}<span style="text-align:left"><b>${esc(k.nome)}</b><br><span class="suave peq">${esc(D.idade(k.nasc))}</span></span>${k.id === atual().id ? '<span style="margin-left:auto">✓</span>' : ''}</button>`).join('')}</div>`;
-    $('#folha-acoes').innerHTML = '<button type="button" class="btn" id="f-gerenciar">Gerenciar crianças</button><button type="button" class="btn btn-pri" id="f-fechar">Fechar</button>';
+function abrirTroca() {
+    const filtro = filtroSala();
+    const lista = D.alunos(banco, filtro);
+    const c = atual();
+    $('#folha-corpo').innerHTML = `<div class="folha-titulo c-lilas"><span class="emoji" aria-hidden="true">👶</span><h2 id="folha-titulo">Trocar de aluno</h2></div>
+        ${banco.salas.length ? chipsSalas(filtro, { contagem: false }) : ''}
+        <div class="lista-troca">${lista.length ? lista.map((k) => `<button type="button" class="btn item-troca ${c && k.id === c.id ? 'atual' : ''}" data-trocar="${k.id}">${avatar(k)}<span style="text-align:left;min-width:0"><b>${esc(k.nome)}</b><br><span class="suave peq">${esc([filtro === 'todas' ? salaDe(k)?.nome : '', D.idade(k.nasc)].filter(Boolean).join(' · '))}</span></span>${c && k.id === c.id ? '<span style="margin-left:auto" aria-label="selecionado">✓</span>' : ''}</button>`).join('')
+            : '<p class="vazio peq">Nenhum aluno nesta sala.</p>'}</div>`;
+    $('#folha-acoes').innerHTML = '<button type="button" class="btn" id="f-gerenciar">Gerenciar alunos e salas</button><button type="button" class="btn btn-pri" id="f-fechar">Fechar</button>';
+    $$('[data-filtro]', folha).forEach((b) => b.addEventListener('click', () => { banco.config.salaFiltro = b.dataset.filtro; salvar(); abrirTroca(); }));
     $$('[data-trocar]', folha).forEach((b) => b.addEventListener('click', () => { banco.config.atual = b.dataset.trocar; salvar(); folha.close(); render(); }));
     $('#f-fechar').addEventListener('click', () => folha.close());
     $('#f-gerenciar').addEventListener('click', () => { folha.close(); irPara('criancas'); });
     $('#folha-form').onsubmit = (e) => e.preventDefault();
-    folha.showModal();
+    if (!folha.open) folha.showModal();
+}
+$('#btn-crianca').addEventListener('click', () => {
+    if (D.alunos(banco).length < 2) return irPara('criancas');
+    abrirTroca();
 });
 
 // ===================== tema =====================
